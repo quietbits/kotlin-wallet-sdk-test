@@ -4,8 +4,8 @@ import org.stellar.sdk.KeyPair
 import shadow.com.google.gson.annotations.SerializedName
 
 
-class Wallet (horizonUrl: String, horizonPassphrase: String) {
-//    TODO: remove once used
+class Wallet(horizonUrl: String, horizonPassphrase: String) {
+    // TODO: remove once used
     init {
         println("Wallet :: init")
         println("   Horizon URL: $horizonUrl")
@@ -17,9 +17,10 @@ class Wallet (horizonUrl: String, horizonPassphrase: String) {
         @SerializedName("secretKey") val secretKey: String,
     )
 
-//    Create account, generate new keypair
+    // Create account, generate new keypair
     fun create(): AccountKeypair {
         val keypair: KeyPair = KeyPair.random()
+        println("testing")
         return AccountKeypair(keypair.accountId, String(keypair.secretSeed))
     }
 }

@@ -14,11 +14,11 @@ class WalletTest {
         val publicKey = accountKeys.publicKey
         val secretKey = accountKeys.secretKey
 
-//        Public key
+        // Public key
         assertEquals(56, publicKey.length)
         assertTrue(publicKey.startsWith("G"))
 
-//        Secret key
+        // Secret key
         assertEquals(56, secretKey.length)
         assertTrue(secretKey.startsWith("S"))
     }
