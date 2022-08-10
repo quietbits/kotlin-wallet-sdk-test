@@ -20,7 +20,6 @@ class Wallet(horizonUrl: String, horizonPassphrase: String) {
     // Create account, generate new keypair
     fun create(): AccountKeypair {
         val keypair: KeyPair = KeyPair.random()
-        println("testing")
         return AccountKeypair(keypair.accountId, String(keypair.secretSeed))
     }
 }
