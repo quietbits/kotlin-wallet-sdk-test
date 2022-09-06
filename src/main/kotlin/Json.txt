@@ -1,0 +1,33 @@
+import com.google.gson.Gson
+import java.io.File
+import java.lang.Exception
+import org.stellar.kotlinwalletsdk.utils.ValidationRequest
+import org.stellar.sdk.responses.AccountResponse
+
+fun json(account: ValidationRequest) {
+  //  JSON from file
+  val jsonFile =
+    try {
+      File("src/main/resources/account_full.json").readText()
+    } catch (e: Exception) {
+      throw Error("File not found")
+    }
+
+  //  JSON file string to object
+  val jsonObject = Gson().fromJson(jsonFile, AccountResponse::class.java)
+  val testBalance = jsonObject.balances[0].assetType
+
+  println("testBalance: $testBalance")
+
+  //  Account to JSON
+  val accountJsonString = Gson().toJson(account).toString()
+
+  println("accountJsonString")
+  println(accountJsonString)
+
+  //  JSON to object
+  val accountJsonObject = Gson().fromJson(accountJsonString, AccountResponse::class.java)
+  val test = accountJsonObject.accountId
+
+  println("test: $test")
+}

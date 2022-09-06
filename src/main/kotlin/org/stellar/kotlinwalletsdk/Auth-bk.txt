@@ -1,0 +1,153 @@
+package org.stellar.kotlinwalletsdk
+
+import java.io.IOException
+import okhttp3.HttpUrl
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.stellar.kotlinwalletsdk.utils.GsonUtils
+import org.stellar.sdk.KeyPair
+import org.stellar.sdk.Network
+import org.stellar.sdk.Transaction
+
+class `Auth-bk`(
+  private val accountAddress: String,
+  private val authEndpoint: String,
+  private val domainName: String,
+  private val clientDomain: String?,
+  networkPassPhrase: String = Network.TESTNET.toString()
+) {
+  private var gson = GsonUtils.instance!!
+  private val network = Network(networkPassPhrase)
+
+  data class TransactionData(val transaction: String, val network_passphrase: String)
+  data class TokenData(val token: String)
+
+  fun start() {
+    // Build auth URL
+    val authURL =
+      HttpUrl.Builder()
+        .scheme("https")
+        .host(authEndpoint)
+        .addQueryParameter("account", accountAddress)
+        .addQueryParameter("home_domain", domainName)
+
+    if (!clientDomain.isNullOrBlank()) {
+      authURL.addQueryParameter("client_domain", clientDomain)
+    }
+
+    authURL.build()
+
+    data class AuthResponse(val transaction: String, val network_passphrase: String)
+    data class TokenResponse(val token: String)
+
+    val jsonContentType = "application/json; charset=utf-8"
+
+    // TODO: fetch json response
+    val client = OkHttpClient()
+    val request = Request.Builder().url(authURL.toString()).build()
+    val challengeXdr: String
+    val challengeNetworkPassPhrase: String
+
+    client.newCall(request).execute().use { response ->
+      if (!response.isSuccessful) throw IOException("Request failed: $response")
+
+      val jsonResponse: AuthResponse =
+        gson.fromJson(response.body!!.charStream(), AuthResponse::class.java)
+
+      // TODO: check json response
+      if (jsonResponse.transaction.isBlank()) {
+        throw Exception("The response did not contain a transaction")
+      }
+
+      challengeXdr = jsonResponse.transaction
+
+      // TODO: check if networks match
+      challengeNetworkPassPhrase = jsonResponse.network_passphrase
+      println("network: ${jsonResponse.network_passphrase}")
+    }
+
+    var challengeTxn = Transaction.fromEnvelopeXdr(challengeXdr, network) as Transaction
+
+    // TODO: check if has client_domain to add extra signature
+    val clientDomainOperation =
+      challengeTxn.operations.firstOrNull {
+        it.toXdr().body?.manageDataOp?.dataName?.string64.toString() == "client_domain"
+      }
+
+    if (clientDomainOperation != null) {
+      val clientDomain =
+        clientDomainOperation.toXdr().body.manageDataOp.dataValue.dataValue.toString(Charsets.UTF_8)
+
+      val clientDomainUrl =
+        HttpUrl.Builder().scheme("https").host(clientDomain).addPathSegment("sign").build()
+
+      println("clientDomain: $clientDomain")
+      println("clientDomainUrl: $clientDomainUrl")
+
+      //      TODO: better name
+      val requestParams = AuthResponse(challengeXdr, challengeNetworkPassPhrase)
+
+      val clientDomainRequest =
+        Request.Builder()
+          .url(clientDomainUrl)
+          .header("Content-Type", jsonContentType)
+          .post(gson.toJson(requestParams).toRequestBody(jsonContentType.toMediaType()))
+          .build()
+
+      client.newCall(clientDomainRequest).execute().use { response ->
+        if (!response.isSuccessful) throw IOException("Request failed: $response")
+
+        val jsonResponse: AuthResponse =
+          gson.fromJson(response.body!!.charStream(), AuthResponse::class.java)
+
+        if (jsonResponse.transaction.isBlank()) {
+          throw Exception("The response did not contain a transaction")
+        }
+
+        challengeTxn =
+          Transaction.fromEnvelopeXdr(
+            jsonResponse.transaction,
+            Network(jsonResponse.network_passphrase)
+          ) as Transaction
+      }
+    }
+
+    // TODO: sign challenge txn
+    challengeTxn.sign(KeyPair.fromSecretSeed(accountSecret))
+
+    val signedChallengeTxnXdr = challengeTxn.toEnvelopeXdrBase64()
+
+    println("signedChallengeTxnXdr")
+    println(signedChallengeTxnXdr)
+    println("  ")
+
+    data class TestTxn(val transaction: String)
+
+    val txnResponse = TestTxn(signedChallengeTxnXdr)
+
+    val sendRequest =
+      Request.Builder()
+        .url(webAuthEndpoint)
+        .header("Content-Type", jsonContentType)
+        .post(gson.toJson(txnResponse).toRequestBody(jsonContentType.toMediaType()))
+        .build()
+
+    // TODO: get JWT token
+    client.newCall(sendRequest).execute().use { response ->
+      if (!response.isSuccessful) throw IOException("Request failed: $response")
+
+      val jsonResponse: TokenResponse =
+        gson.fromJson(response.body!!.charStream(), TokenResponse::class.java)
+
+      if (jsonResponse.token.isBlank()) {
+        throw Exception("Token was not returned")
+      }
+
+      val token = jsonResponse.token
+
+      println("token: $token")
+    }
+  }
+}

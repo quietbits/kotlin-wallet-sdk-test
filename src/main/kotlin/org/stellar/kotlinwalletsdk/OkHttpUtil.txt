@@ -1,0 +1,38 @@
+package org.stellar.kotlinwalletsdk
+
+import okhttp3.MediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+
+object OkHttpUtil {
+  private const val APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8"
+  private val TYPE_JSON: MediaType = MediaType.parse(APPLICATION_JSON_CHARSET_UTF_8)!!
+  fun buildClient(): OkHttpClient {
+    return OkHttpClient.Builder().retryOnConnectionFailure(false).build()
+  }
+
+  fun buildJsonPostRequest(url: String, requestBody: String): Request {
+    return Request.Builder()
+      .url(url)
+      .header("Content-Type", APPLICATION_JSON_CHARSET_UTF_8)
+      .post(buildJsonRequestBody(requestBody))
+      .build()
+  }
+
+  fun buildJsonPutRequest(url: String, requestBody: String): Request {
+    return Request.Builder()
+      .url(url)
+      .header("Content-Type", APPLICATION_JSON_CHARSET_UTF_8)
+      .put(buildJsonRequestBody(requestBody))
+      .build()
+  }
+
+  fun buildGetRequest(url: String): Request {
+    return Request.Builder().url(url).get().build()
+  }
+
+  private fun buildJsonRequestBody(requestBody: String): RequestBody {
+    return RequestBody.create(TYPE_JSON, requestBody)
+  }
+}

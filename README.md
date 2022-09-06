@@ -11,7 +11,7 @@ Example
 
 ```kotlin
 // Using Horizon testnet configuration
-val wallet = Wallet("https://horizon-testnet.stellar.org", Network.TESTNET.toString())
+val wallet = Wallet("https://horizon-testnet.stellar.org", "Test SDF Network ; September 2015")
 ```
 
 ### `Wallet.create()`
